@@ -1510,6 +1510,7 @@ free_all_client_cbs(void)
   }
 }
 
+
 oc_client_cb_t *
 oc_ri_alloc_client_cb(const char *uri, oc_endpoint_t *endpoint,
                       oc_method_t method, const char *query,
@@ -1528,6 +1529,7 @@ oc_ri_alloc_client_cb(const char *uri, oc_endpoint_t *endpoint,
   cb->qos = qos;
   cb->handler = handler;
   cb->user_data = user_data;
+  cb->accept_header=APPLICATION_VND_OCF_CBOR;
   cb->token_len = 8;
   int i = 0;
   uint32_t r;
@@ -1546,6 +1548,18 @@ oc_ri_alloc_client_cb(const char *uri, oc_endpoint_t *endpoint,
   oc_list_add(client_cbs, cb);
   return cb;
 }
+
+
+oc_client_cb_t *
+oc_ri_alloc_client_cb_custom_accept(const char *uri, oc_endpoint_t *endpoint,
+                      oc_method_t method, const char *query,
+                      oc_client_handler_t handler, oc_qos_t qos,
+                      void *user_data,unsigned int accept){
+  oc_client_cb_t * cb = oc_ri_alloc_client_cb(uri,endpoint,method,query, handler,qos, user_data);
+  cb->accept_header=accept;
+  return cb;
+}
+
 #endif /* OC_CLIENT */
 
 void
