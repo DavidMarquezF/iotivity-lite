@@ -35,7 +35,13 @@ typedef enum {
   OC_BLOCKWISE_SERVER
 } oc_blockwise_role_t;
 
-typedef struct oc_blockwise_state_s
+typedef struct oc_blockwise_state_s oc_blockwise_state_t;
+typedef bool(*oc_blockwise_handle_t)(oc_blockwise_state_t *buffer,
+                          uint32_t incoming_block_offset,
+                          const uint8_t *incoming_block,
+                          uint32_t incoming_block_size);
+
+struct oc_blockwise_state_s
 {
   struct oc_blockwise_state_s *next;
   oc_string_t href;
@@ -56,8 +62,10 @@ typedef struct oc_blockwise_state_s
   uint8_t token_len;
   uint16_t mid;
   void *client_cb;
+  oc_blockwise_handle_t block_handle_cb;
 #endif /* OC_CLIENT */
-} oc_blockwise_state_t;
+};
+
 
 typedef struct oc_blockwise_request_state_s
 {

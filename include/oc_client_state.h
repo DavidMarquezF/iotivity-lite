@@ -83,6 +83,7 @@ typedef struct oc_client_cb_t
   uint16_t mid;
   uint8_t token[COAP_TOKEN_LEN];
   uint8_t token_len;
+  uint16_t accept_header;
   bool discovery;
   bool multicast;
   bool stop_multicast_receive;
@@ -103,6 +104,10 @@ oc_client_cb_t *oc_ri_alloc_client_cb(const char *uri, oc_endpoint_t *endpoint,
                                       oc_method_t method, const char *query,
                                       oc_client_handler_t handler, oc_qos_t qos,
                                       void *user_data);
+oc_client_cb_t * oc_ri_alloc_client_cb_custom_accept(const char *uri, oc_endpoint_t *endpoint,
+                      oc_method_t method, const char *query,
+                      oc_client_handler_t handler, oc_qos_t qos,
+                      void *user_data,unsigned int accept);
 
 oc_client_cb_t *oc_ri_get_client_cb(const char *uri, oc_endpoint_t *endpoint,
                                     oc_method_t method);

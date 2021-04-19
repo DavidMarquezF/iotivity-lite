@@ -59,6 +59,7 @@ oc_blockwise_init_buffer(struct oc_memb *pool, const char *href,
 #ifdef OC_CLIENT
     buffer->mid = 0;
     buffer->client_cb = NULL;
+    buffer->block_handle_cb = NULL;
 #endif /* OC_CLIENT */
     return buffer;
   }
@@ -354,18 +355,30 @@ oc_blockwise_handle_block(oc_blockwise_state_t *buffer,
                           const uint8_t *incoming_block,
                           uint32_t incoming_block_size)
 {
-  if (incoming_block_offset >= (unsigned)OC_MAX_APP_DATA_SIZE ||
-      incoming_block_size > (OC_MAX_APP_DATA_SIZE - incoming_block_offset) ||
-      incoming_block_offset > buffer->next_block_offset) {
+ // PRINT("\n\n---------------Handle block: off: %d size: %d, next_off: %d\n",incoming_block_offset,incoming_block_size,buffer->next_block_offset);
+  
+  if (incoming_block_offset > buffer->next_block_offset) {
     return false;
   }
-
-  if (buffer->next_block_offset == incoming_block_offset) {
-    memcpy(&buffer->buffer[buffer->next_block_offset], incoming_block,
-           incoming_block_size);
-
-    buffer->next_block_offset += incoming_block_size;
+  bool handledBlock = false;
+  if(buffer->block_handle_cb){
+    if(buffer->next_block_offset == incoming_block_offset)
+      handledBlock |= buffer->block_handle_cb(buffer, incoming_block_offset, incoming_block, incoming_block_size);
   }
+  else{
+    if(incoming_block_offset >= (unsigned)OC_MAX_APP_DATA_SIZE ||
+      incoming_block_size > (OC_MAX_APP_DATA_SIZE - incoming_block_offset))
+        return false;
+      
+    if (buffer->next_block_offset == incoming_block_offset) {
+      memcpy(&buffer->buffer[buffer->next_block_offset], incoming_block,
+            incoming_block_size);
+      handledBlock |= true;
+    }
+  }
+
+  if(handledBlock)
+    buffer->next_block_offset += incoming_block_size;
 
   return true;
 }
