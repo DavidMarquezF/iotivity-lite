@@ -579,7 +579,7 @@ int oc_obt_device_hard_reset(oc_uuid_t *uuid, oc_obt_device_status_cb_t cb,
                              void *data);
 
 /**
- * Provision pair-wise 128-bit pre-shared key (PSK) credentials to a Client
+ * Provision pairwise 128-bit pre-shared key (PSK) credentials to a Client
  * and Server so they may establish a secure (D)TLS session.
  *
  * Example:
@@ -588,9 +588,9 @@ int oc_obt_device_hard_reset(oc_uuid_t *uuid, oc_obt_device_status_cb_t cb,
  * provision_credentials_cb(int status, void *data)
  * {
  *   if (status >= 0) {
- *     printf("Successfully provisioned pair-wise credentials\n");
+ *     printf("Successfully provisioned pairwise credentials\n");
  *   } else {
- *     printf("ERROR provisioning pair-wise credentials\n");
+ *     printf("ERROR provisioning pairwise credentials\n");
  *   }
  * }
  *
@@ -616,6 +616,22 @@ int oc_obt_device_hard_reset(oc_uuid_t *uuid, oc_obt_device_status_cb_t cb,
  */
 int oc_obt_provision_pairwise_credentials(oc_uuid_t *uuid1, oc_uuid_t *uuid2,
                                           oc_obt_status_cb_t cb, void *data);
+
+int oc_obt_provision_pairwise_oscore_contexts(oc_uuid_t *uuid1,
+                                              oc_uuid_t *uuid2,
+                                              oc_obt_status_cb_t cb,
+                                              void *data);
+
+int oc_obt_provision_client_group_oscore_context(oc_uuid_t *uuid,
+                                                 const char *desc,
+                                                 oc_obt_device_status_cb_t cb,
+                                                 void *data);
+
+int oc_obt_provision_server_group_oscore_context(oc_uuid_t *uuid,
+                                                 oc_uuid_t *subjectuuid,
+                                                 const char *desc,
+                                                 oc_obt_device_status_cb_t cb,
+                                                 void *data);
 /**
  * Provision identity certificates
  *
@@ -734,6 +750,34 @@ oc_role_t *oc_obt_add_roleid(oc_role_t *roles, const char *role,
  * @param roles the head of the oc_role_t list
  */
 void oc_obt_free_roleid(oc_role_t *roles);
+
+
+
+/**
+ * Provision a trust anchor for an cloud enabled server.
+ *
+ *
+ * @param certificate the certificate data
+ * @param certificate_size the certificate data size
+ * @param subject id (the uuid of the cloud)
+ * @param uuid the uuid of the device to provision
+ * @param cb callback invoked to indicate the success or failure of the
+ *           provisioning
+ * @param data context pointer that is passed to the oc_obt_status_cb_t. The
+ *             pointer must remain valid till the end of the oc_obt_status_cb_t
+ *             function
+ *
+ * @return
+ *   - `0` on success
+ *   - `-1` on failure
+ *
+ * @see oc_obt_status_cb_t
+ * @see oc_obt_add_roleid
+ * @see oc_obt_free_roleid
+ */
+int oc_obt_provision_trust_anchor(char* certificate, size_t certificate_size, char* subject, oc_uuid_t* uuid,
+  oc_obt_status_cb_t cb, void* data);
+
 
 /* Provision access-control entries (ace2) */
 /**
@@ -1134,6 +1178,55 @@ void oc_obt_free_acl(oc_sec_acl_t *acl);
  */
 int oc_obt_delete_ace_by_aceid(oc_uuid_t *uuid, int aceid,
                                oc_obt_status_cb_t cb, void *data);
+
+/**
+ * sets the data (POST) for the oic.r.coapcloudconf resource
+ *
+ * @param[in] uuid the uuid of the remote device
+ * @param[in] url of the resource
+ * @param[in] at Access Token
+ * @param[in] apn Auth Provider Name
+ * @param[in] cis  OCF Cloud interface URL
+ * @param[in] sid  OCF Cloud UUID
+ * @param[in] cb callback invoked to indicate the success or failure of the
+ *               request
+ * @param[in] user_data context pointer that is passed to the
+ *                 oc_obt_status_cb_t. The pointer must remain valid till the
+ *                 end of the oc_obt_status_cb_t function
+ *
+ * @return
+ *  - `0` on success
+ *  - `-1` on failure
+ */
+int oc_obt_update_cloud_conf_device(oc_uuid_t* uuid,
+  const char* url, const char* at, const char* apn,
+  const char* cis, const char* sid,
+  oc_response_handler_t cb, void* user_data);
+
+/**
+ * sets the data (POST) for the oic.r.coapcloudconf resource
+ *
+ * @param[in] uuid the uuid of the remote device
+ * @param[in] url of the resource
+ * @param[in] cb callback invoked to indicate the success or failure of the
+ *               request
+ * @param[in] user_data context pointer that is passed to the
+ *                 oc_obt_status_cb_t. The pointer must remain valid till the
+ *                 end of the oc_obt_status_cb_t function
+ *
+ * @return
+ *  - `0` on success
+ *  - `-1` on failure
+ */
+int oc_obt_retrieve_cloud_conf_device(oc_uuid_t* uuid,
+  const char* url, oc_response_handler_t cb, void* user_data);
+
+/**
+ * sets the secure domain info
+ *
+ * @param[in] name the name of the secure domain
+ * @param[in] priv privacy indicator
+ */
 void oc_obt_set_sd_info(char *name, bool priv);
 #ifdef __cplusplus
 }

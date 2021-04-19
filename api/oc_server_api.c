@@ -292,14 +292,14 @@ oc_resource_t *
 oc_new_collection(const char *name, const char *uri, uint8_t num_resource_types,
                   size_t device)
 {
-  oc_collection_t *collection = oc_collection_alloc();
+  oc_resource_t *collection = (oc_resource_t *)oc_collection_alloc();
   if (collection) {
     collection->interfaces = OC_IF_BASELINE | OC_IF_LL | OC_IF_B;
     collection->default_interface = OC_IF_LL;
-    oc_populate_resource_object((oc_resource_t *)collection, name, uri,
+    oc_populate_resource_object(collection, name, uri,
                                 num_resource_types, device);
   }
-  return (oc_resource_t *)collection;
+  return collection;
 }
 
 void
@@ -416,6 +416,20 @@ oc_resource_set_request_handler(oc_resource_t *resource, oc_method_t method,
   }
 }
 
+#ifdef OC_OSCORE
+void
+oc_resource_set_secure_mcast(oc_resource_t *resource, bool supported)
+{
+  if (resource) {
+    if (supported) {
+      resource->properties |= OC_SECURE_MCAST;
+    } else {
+      resource->properties &= ~OC_SECURE_MCAST;
+    }
+  }
+}
+#endif /* OC_OSCORE */
+
 void
 oc_set_con_write_cb(oc_con_write_cb_t callback)
 {
@@ -438,6 +452,23 @@ bool
 oc_delete_resource(oc_resource_t *resource)
 {
   return oc_ri_delete_resource(resource);
+}
+
+static oc_event_callback_retval_t
+oc_delayed_delete_resource_cb(void *data)
+{
+  oc_resource_t *resource = (oc_resource_t *)data;
+#ifdef OC_CLOUD
+  oc_cloud_delete_resource(resource);
+#endif
+  oc_delete_resource(resource);
+  return OC_EVENT_DONE;
+}
+
+void
+oc_delayed_delete_resource(oc_resource_t *resource)
+{
+  oc_set_delayed_callback(resource, oc_delayed_delete_resource_cb, 0);
 }
 
 void
@@ -464,7 +495,11 @@ oc_send_separate_response(oc_separate_response_t *handle,
 {
   oc_response_buffer_t response_buffer;
   response_buffer.buffer = handle->buffer;
-  response_buffer.response_length = response_length();
+  if (handle->len != 0)
+    response_buffer.response_length = handle->len;
+  else
+    response_buffer.response_length = response_length();
+
   response_buffer.code = oc_status_code(response_code);
   response_buffer.content_format = APPLICATION_VND_OCF_CBOR;
 
@@ -474,8 +509,8 @@ oc_send_separate_response(oc_separate_response_t *handle,
   while (cur != NULL) {
     next = cur->next;
     if (cur->observe < 3) {
-      coap_transaction_t *t =
-        coap_new_transaction(coap_get_mid(), &cur->endpoint);
+      coap_transaction_t *t = coap_new_transaction(
+        coap_get_mid(), cur->token, cur->token_len, &cur->endpoint);
       if (t) {
         coap_separate_resume(response, cur,
                              (uint8_t)oc_status_code(response_code), t->mid);

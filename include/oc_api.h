@@ -1121,6 +1121,7 @@ void oc_resource_set_properties_cbs(oc_resource_t *resource,
                                     oc_set_properties_cb_t set_properties,
                                     void *set_props_user_data);
 
+void oc_resource_set_secure_mcast(oc_resource_t *resource, bool supported);
 /**
  * Add a resource to the IoTivity stack.
  *
@@ -1148,6 +1149,13 @@ bool oc_add_resource(oc_resource_t *resource);
  *  - false: there was an issue deleting the resource.
  */
 bool oc_delete_resource(oc_resource_t *resource);
+
+/**
+ * Schedule a callback to remove a resource.
+ *
+ * @param[in] resource the resource to delete
+ */
+void oc_delayed_delete_resource(oc_resource_t* resource);
 
 /**
   @brief Callback for change notifications from the oic.wk.con resource.
@@ -1824,6 +1832,10 @@ bool oc_do_site_local_ipv6_multicast(const char *uri, const char *query,
                                      void *user_data);
 
 void oc_stop_multicast(oc_client_response_t *response);
+
+bool oc_init_multicast_update(const char *uri, const char *query);
+
+bool oc_do_multicast_update(void);
 
 /**
  * Free a list of endpoints from the oc_endpoint_t

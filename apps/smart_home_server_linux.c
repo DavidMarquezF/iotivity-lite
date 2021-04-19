@@ -70,7 +70,7 @@ app_init(void)
   oc_activate_interrupt_handler(toggle_switch);
   int err = oc_init_platform("Intel", NULL, NULL);
 
-  err |= oc_add_device("/oic/d", "oic.d.switch", "Temp_sensor", "ocf.2.2.0",
+  err |= oc_add_device("/oic/d", "oic.d.switch", "Temp_sensor", "ocf.2.2.2",
                        "ocf.res.1.3.0,ocf.sh.1.3.0", NULL, NULL);
   PRINT("\tSwitch device added.\n");
 #if defined(OC_IDD_API)
@@ -124,7 +124,7 @@ get_temp(oc_request_t *request, oc_interface_mask_t iface_mask, void *user_data)
       u = K;
     } else if (units[0] == 'F') {
       u = F;
-    } else if (units[0] != 'C') {
+    } else if (units[0] == 'C') {
       u = C;
     } else {
       invalid_query = true;

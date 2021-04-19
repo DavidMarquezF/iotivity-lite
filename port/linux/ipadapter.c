@@ -16,6 +16,7 @@
 
 #define _GNU_SOURCE
 #include "ipcontext.h"
+#include "ipadapter.h"
 #ifdef OC_TCP
 #include "tcpadapter.h"
 #endif
@@ -40,6 +41,7 @@
 #include <sys/select.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* Some outdated toolchains do not define IFA_FLAGS.
    Note: Requires Linux kernel 3.14 or later. */
@@ -868,7 +870,7 @@ network_event_thread(void *data)
   int i, n;
 
   while (dev->terminate != 1) {
-    setfds = dev->rfds;
+    setfds = ip_context_rfds_fd_copy(dev);
     n = select(FD_SETSIZE, &setfds, NULL, NULL, NULL);
 
     if (FD_ISSET(dev->shutdown_pipe[0], &setfds)) {
@@ -1400,8 +1402,16 @@ oc_connectivity_init(size_t device)
   dev->device = device;
   OC_LIST_STRUCT_INIT(dev, eps);
 
+  if (pthread_mutex_init(&dev->rfds_mutex, NULL) != 0) {
+    oc_abort("error initializing TCP adapter mutex");
+  }
+
   if (pipe(dev->shutdown_pipe) < 0) {
     OC_ERR("shutdown pipe: %d", errno);
+    return -1;
+  }
+  if (set_nonblock_socket(dev->shutdown_pipe[0]) < 0) {
+    OC_ERR("Could not set non-block shutdown_pipe[0]");
     return -1;
   }
 
@@ -1639,6 +1649,8 @@ oc_connectivity_shutdown(size_t device)
   close(dev->shutdown_pipe[1]);
   close(dev->shutdown_pipe[0]);
 
+  pthread_mutex_destroy(&dev->rfds_mutex);
+
   free_endpoints_list(dev);
 
   oc_list_remove(ip_contexts, dev);
@@ -1792,3 +1804,36 @@ oc_dns_lookup(const char *domain, oc_string_t *addr, enum transport_flags flags)
   return ret;
 }
 #endif /* OC_DNS_LOOKUP */
+
+int
+set_nonblock_socket(int sockfd) {
+  int flags = fcntl(sockfd, F_GETFL, 0);
+  if (flags < 0) {
+    return -1;
+  }
+
+  return fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+}
+
+void ip_context_rfds_fd_set(ip_context_t* dev,int sockfd)
+{
+  pthread_mutex_lock(&dev->rfds_mutex);
+  FD_SET(sockfd, &dev->rfds);
+  pthread_mutex_unlock(&dev->rfds_mutex);
+}
+
+void ip_context_rfds_fd_clr(ip_context_t* dev, int sockfd)
+{
+  pthread_mutex_lock(&dev->rfds_mutex);
+  FD_CLR(sockfd, &dev->rfds);
+  pthread_mutex_unlock(&dev->rfds_mutex);
+}
+
+fd_set ip_context_rfds_fd_copy(ip_context_t* dev)
+{
+  fd_set setfds;
+  pthread_mutex_lock(&dev->rfds_mutex);
+  memcpy(&setfds, &dev->rfds, sizeof(dev->rfds));
+  pthread_mutex_unlock(&dev->rfds_mutex);
+  return setfds;
+}
