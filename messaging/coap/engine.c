@@ -238,7 +238,7 @@ coap_receive(oc_message_t *msg)
     if (coap_get_header_block2(message, &block2_num, &block2_more, &block2_size,
                                &block2_offset))
       block2 = true;
-
+  
 #ifdef OC_BLOCK_WISE
     block1_size = MIN(block1_size, (uint16_t)OC_BLOCK_SIZE);
     block2_size = MIN(block2_size, (uint16_t)OC_BLOCK_SIZE);
@@ -584,6 +584,9 @@ coap_receive(oc_message_t *msg)
         }
       }
     } else {
+
+      // MF_COMMENT: It's not a request, it's a response   
+      
 #ifdef OC_CLIENT
 #ifdef OC_BLOCK_WISE
       uint16_t response_mid = coap_get_mid();
@@ -611,19 +614,22 @@ coap_receive(oc_message_t *msg)
         coap_remove_observer_by_mid(&msg->endpoint, message->mid);
 #endif
       }
-
+        // MF_COMMENT: The following is for multiple block request, since it's to find a request buffer (in case of POST or PUT)
 #ifdef OC_CLIENT
 #ifdef OC_BLOCK_WISE
       if (client_cb) {
         request_buffer = oc_blockwise_find_request_buffer_by_client_cb(
           &msg->endpoint, client_cb);
       } else {
+
         request_buffer = oc_blockwise_find_request_buffer_by_mid(message->mid);
         if (!request_buffer) {
           request_buffer = oc_blockwise_find_request_buffer_by_token(
             message->token, message->token_len);
         }
       }
+
+
       if (!error_response && request_buffer &&
           (block1 || message->code == REQUEST_ENTITY_TOO_LARGE_4_13)) {
         OC_DBG("found request buffer for uri %s",
@@ -687,7 +693,12 @@ coap_receive(oc_message_t *msg)
         request_buffer = NULL;
       }
 
+      // MF_COMMENT: Now comes the handling of the block 2
       if (client_cb) {
+        
+        // MF_COMMENT: We set up a client cb to handle everything
+        // MF_COMMENT: Tries to look if the response buffer for blockwise had already been created
+        
         response_buffer = oc_blockwise_find_response_buffer_by_client_cb(
           &msg->endpoint, client_cb);
         if (!response_buffer) {
@@ -701,13 +712,14 @@ coap_receive(oc_message_t *msg)
           }
         }
       } else {
-        response_buffer =
+       response_buffer =
           oc_blockwise_find_response_buffer_by_mid(message->mid);
         if (!response_buffer) {
           response_buffer = oc_blockwise_find_response_buffer_by_token(
             message->token, message->token_len);
         }
       }
+
       if (!error_response && response_buffer) {
         OC_DBG("got response buffer for uri %s",
                oc_string(response_buffer->href));
@@ -720,6 +732,7 @@ coap_receive(oc_message_t *msg)
         const uint8_t *incoming_block;
         uint32_t incoming_block_len =
           (uint32_t)coap_get_payload(message, &incoming_block);
+        // MF_COMMENT: Now it just needs to handle the new block and issue a request for the following one if needed
         if (incoming_block_len > 0 &&
             oc_blockwise_handle_block(response_buffer, block2_offset,
                                       incoming_block,
@@ -732,7 +745,10 @@ coap_receive(oc_message_t *msg)
               coap_udp_init_message(response, COAP_TYPE_CON, client_cb->method,
                                     response_mid);
               response_buffer->mid = response_mid;
-              coap_set_header_accept(response, APPLICATION_VND_OCF_CBOR);
+              if(client_cb)
+                coap_set_header_accept(response, client_cb->accept_header);
+              else
+                coap_set_header_accept(response, APPLICATION_VND_OCF_CBOR);
               coap_set_header_block2(response, block2_num + 1, 0, block2_size);
               coap_set_header_uri_path(response, oc_string(client_cb->uri),
                                        oc_string_len(client_cb->uri));
@@ -740,11 +756,13 @@ coap_receive(oc_message_t *msg)
                 coap_set_header_uri_query(response,
                                           oc_string(client_cb->query));
               }
+              
               goto send_message;
             }
           }
           response_buffer->payload_size = response_buffer->next_block_offset;
         }
+        
       }
 
 #endif /* OC_BLOCK_WISE */
@@ -779,7 +797,7 @@ coap_receive(oc_message_t *msg)
 #endif /* OC_CLIENT */
     }
   } else {
-    OC_ERR("Unexpected CoAP command");
+    OC_ERR("    Unexpected CoAP command");
 #ifdef OC_SECURITY
     coap_audit_log(msg);
 #endif /* OC_SECURITY */
