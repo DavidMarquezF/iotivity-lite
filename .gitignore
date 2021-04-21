@@ -87,6 +87,8 @@ port/linux/securitytest
 port/linux/simpleserver_pki
 port/linux/stapptest
 
+port/esp32/main/build/
+
 #creds files
 port/linux/client_creds
 port/linux/server_creds
