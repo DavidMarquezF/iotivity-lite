@@ -361,11 +361,14 @@ oc_blockwise_handle_block(oc_blockwise_state_t *buffer,
     return false;
   }
   bool handledBlock = false;
+  #if OC_CLIENT
   if(buffer->block_handle_cb){
     if(buffer->next_block_offset == incoming_block_offset)
       handledBlock |= buffer->block_handle_cb(buffer, incoming_block_offset, incoming_block, incoming_block_size);
   }
-  else{
+  else
+  #endif
+  {
     if(incoming_block_offset >= (unsigned)OC_MAX_APP_DATA_SIZE ||
       incoming_block_size > (OC_MAX_APP_DATA_SIZE - incoming_block_offset))
         return false;
