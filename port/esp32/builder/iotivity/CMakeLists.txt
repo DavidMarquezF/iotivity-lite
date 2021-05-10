@@ -126,6 +126,13 @@ if (CONFIG_SECURE)
 	)
 endif()
 
+if(CONFIG_SOFTWARE_UPDATES)
+	add_definitions(-DOC_SOFTWARE_UPDATE)
+	list(APPEND sources
+		${IOTIVITY_ESP_SOURCE}/../../../api/oc_swupdate.c
+		)
+endif()
+
 #add_definitions(-DOC_CLIENT)
 #add_definitions(-DOC_SERVER)
 
